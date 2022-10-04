@@ -1,44 +1,31 @@
-create OR REPLACE function trgValidaDadosConsulta()
-RETURNS trigger AS $trgValidaDadosConsulta$;
 
-
-DECLARE 
-linhadopacinserido record;
-espec_row record;
-
---counter integer := 1;
+CREATE OR REPLACE FUNCTION ValidaDadosConsulta()
+RETURNS TRIGGER AS $$
+DECLARE
+paciente_row	RECORD;
+especialidade_row RECORD;
 BEGIN
-SELECT
-    INTO linhadopacinserido *
-FROM
-    pacientes as p
-where
-    p.id = NEW.pac_id;
 
-SELECT
-    INTO espec_row *
-FROM
-    especialidades as esp
-where
-    esp.id = NEW.especialidade_id;
+        SELECT INTO paciente_row
+        *  FROM pacientes as p 
+		where id_pacientes = NEW.id_pacientes;
 
-IF linhadopacinserido.sexo = 'm'
-AND espec_row.nome = 'ginecologista' THEN RAISE EXCEPTION 'Ginecologista apenas para pacientes do sexo feminino';
+        SELECT INTO especialidade_row
+        *  FROM especialidades as e
+		where id_especialidades = NEW.id_especialidades;
 
-ELSEIF linhadopacinserido.sexo = 'f'
-AND espec_row.nome = 'urologista' THEN RAISE EXCEPTION 'Urologista apenas para pacientes do sexo masculino';
-
-END IF;
-
-RETURN NEW;
-
-END;
-
-$ trgValidaDadosConsulta $ LANGUAGE plpgsql;
-
-CREATE TRIGGER ValidaDadosConsulta AFTER
-INSERT
-    OR
-UPDATE
-    ON consultas FOR EACH ROW --FOR EACH STATEMENT
-    EXECUTE PROCEDURE trgValidaDadosConsulta();
+        IF paciente_row.sexo = 'm'
+		AND especialidade_row.especialidade = 'ginecologista' THEN
+           RAISE EXCEPTION 'Ginecologista apenas para pacientes do sexo feminino';
+        ELSEIF paciente_row.sexo = 'f' 
+		AND especialidade_row.especialidade = 'urologista' THEN
+           RAISE EXCEPTION 'Urologista apenas para pacientes do sexo masculino';
+        END IF;
+        
+        
+        --AUDITA MODIFICACAO 
+        NEW.last_time_updated := current_timestamp;
+        NEW.last_user_updated := paciente_row.nomePaciente;
+	RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
